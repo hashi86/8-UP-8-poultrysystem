@@ -3132,6 +3132,7 @@ function closeSidebar() {
 }
 
 function nav(page) {
+  localStorage.setItem('poultry_active_page', page);
   document.querySelectorAll('.page').forEach(p => p.classList.add('page-hidden'));
   const el = document.getElementById('page-' + page);
   if (el) el.classList.remove('page-hidden');
@@ -7550,7 +7551,8 @@ function updateBottomNav(page) {
 }
 
 // Init bottom nav state
-updateBottomNav('dashboard');
+const savedPage = localStorage.getItem('poultry_active_page') || 'dashboard';
+nav(savedPage);
 </script>
 
 <!-- BOTTOM NAV BAR -->
