@@ -4720,29 +4720,14 @@ const VP_COLORS = {
   'avian-flu':  {g:'linear-gradient(135deg,#450a0a,#b91c1c)', accent:'#fca5a5'},
 };
 
-function loadAcademyCourses() {
+async function loadAcademyCourses() {
   const c = document.getElementById('academy-tab-content');
-  const lessons = [
-    {id:'terminology', icon:'📖', title:'مصطلحات علم الدواجن الأساسية', desc:'Broiler, Layer, FCR, DOC والأنظمة الثلاثة للإنتاج', slides:7, level:'مبتدئ'},
-    {id:'housing',     icon:'🏗️', title:'إسكان الدواجن وتصميم الحظائر',  desc:'معايير الموضع والاتجاه والكثافة ودرجات الحرارة',   slides:6, level:'مبتدئ'},
-    {id:'equipment',   icon:'⚙️', title:'معدات وأدوات الدواجن الحديثة',   desc:'المعالف والمشارب والحضانات ومعدات الفقاسة',          slides:5, level:'مبتدئ'},
-    {id:'broiler-prod',icon:'🐤', title:'إنتاج اللاحم — من الكتكوت للذبح',desc:'إعداد الحظيرة، برنامج التغذية والتهوية والذبح',      slides:6, level:'تجاري'},
-    {id:'marketing',   icon:'📦', title:'تسويق الدواجن وسلسلة التوريد',   desc:'سلسلة التوريد، التدريج والجودة، استراتيجيات السوق',  slides:5, level:'تجاري'},
-    {id:'digestive',   icon:'🔬', title:'الجهاز الهضمي للدواجن',           desc:'المنقار والحوصلة والقانصة والأمعاء كاملاً',           slides:6, level:'متقدم'},
-    {id:'biosecurity', icon:'🛡️', title:'الأمن الحيوي الشامل',             desc:'ناقلات الأمراض وإجراءات الحماية اليومية',            slides:6, level:'متقدم'},
-    {id:'vaccination', icon:'💉', title:'التحصينات وبرامجها الكاملة',      desc:'أنواع اللقاحات، جدول التحصين، طرق التطبيق',         slides:5, level:'متقدم'},
-    {id:'nutrition',   icon:'🌾', title:'تغذية الدواجن — العلم الكامل',    desc:'الطاقة، البروتين، الأحماض الأمينية وأشكال العلف',    slides:7, level:'متقدم'},
-    {id:'egg-structure',icon:'🥚',title:'تكوين البيضة وتشريحها',           desc:'طبقات البيضة وتكوينها في القناة البيضية',            slides:5, level:'متوسط'},
-    {id:'newcastle',   icon:'🦠', title:'مرض نيوكاسل — الدرس الكامل',     desc:'الأعراض، التشخيص، التحصين والوقاية الشاملة',         slides:6, level:'صحة'},
-    {id:'mareks',      icon:'🔮', title:'مرض ماريك — الفيروس الهربسي',    desc:'الأشكال الأربعة وخطة التحصين يوم الفقس',            slides:5, level:'صحة'},
-    {id:'fowl-cholera',icon:'⚠️', title:'كوليرا الطيور',                   desc:'Pasteurella multocida والعلاج بالمضادات',            slides:5, level:'صحة'},
-    {id:'avian-flu',   icon:'🚨', title:'إنفلونزا الطيور',                 desc:'HPAI وLPAI والاستجابة الطارئة العالمية',             slides:6, level:'خطر'},
-  ];
+  const lessons = await apiFetch('/academy/lessons') || [];
 
   const levelBadge = {مبتدئ:'#22c55e',تجاري:'#06b6d4',متقدم:'#8b5cf6',متوسط:'#eab308',صحة:'#ef4444',خطر:'#dc2626'};
 
   const progress = vpGetProgress();
-  const completedCount = lessons.filter(l => progress[l.id]).length;
+  const completedCount = lessons.filter(l => progress[l.lesson_id]).length;
   const totalCount = lessons.length;
   const pctDone = Math.round((completedCount / totalCount) * 100);
 
@@ -4765,17 +4750,17 @@ function loadAcademyCourses() {
     '</div></div></div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">' +
     lessons.map(l => {
-      const col = VP_COLORS[l.id] || {g:'linear-gradient(135deg,#1e293b,#334155)',accent:'#94a3b8'};
+      const col = VP_COLORS[l.lesson_id] || {g:'linear-gradient(135deg,#1e293b,#334155)',accent:'#94a3b8'};
       const badgeColor = levelBadge[l.level] || '#64748b';
-      const dur = Math.ceil(l.slides * 0.7);
-      const done = !!progress[l.id];
-      const doneCount = progress[l.id] ? progress[l.id].count || 1 : 0;
-      return '<div class="vl-card" onclick="openVideoLesson(\'' + l.id + '\')" style="' + (done ? 'outline:2px solid #22c55e;' : '') + '">' +
+      const dur = Math.ceil((l.duration_minutes || l.slides_count * 0.7));
+      const done = !!progress[l.lesson_id];
+      const doneCount = progress[l.lesson_id] ? progress[l.lesson_id].count || 1 : 0;
+      return '<div class="vl-card" onclick="openVideoLesson(\'' + l.lesson_id + '\')" style="' + (done ? 'outline:2px solid #22c55e;' : '') + '">' +
         '<div class="vl-thumb" style="background:' + col.g + '">' +
-        '<div class="vl-thumb-icon">' + l.icon + '</div>' +
+        '<div class="vl-thumb-icon">' + (l.icon || '📖') + '</div>' +
         (done ? '<div style="position:absolute;top:8px;right:8px;background:#22c55e;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,0.3)">✓</div>' : '') +
         '<div class="vl-play-btn"><div class="vl-play-triangle"></div></div>' +
-        '<div style="position:absolute;bottom:8px;left:10px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;z-index:2">' + l.slides + ' شرائح · ~' + dur + ' د</div>' +
+        '<div style="position:absolute;bottom:8px;left:10px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;z-index:2">' + (l.slides_count || 0) + ' شرائح · ~' + dur + ' د</div>' +
         '</div>' +
         '<div class="vl-info">' +
         '<div class="vl-title">' + l.title + '</div>' +
@@ -4852,11 +4837,18 @@ function certPrint() {
 // ==================== VIDEO PLAYER ENGINE ====================
 let _vp = {id:null, slides:[], idx:0, playing:false, speed:6000, timer:null, timerAnim:null};
 
-function openVideoLesson(id) {
-  const lesson = lessonContent[id];
-  if (!lesson) return;
+async function openVideoLesson(id) {
+  const lessonData = await apiFetch('/academy/lessons/' + id);
+  if (!lessonData) return;
+  const lesson = lessonData;
+  const slides = (lesson.slides || []).map(s => ({
+    icon: s.icon || '📖',
+    title: s.title,
+    content: s.content || ''
+  }));
+  if (!slides.length) return;
   _vp.id = id;
-  _vp.slides = lesson.slides;
+  _vp.slides = slides;
   _vp.idx = 0;
   _vp.playing = true;
   _vp.speed = 6000;
@@ -4924,16 +4916,24 @@ function vpShowCompletion() {
   vpClearTimer();
   _vp.playing = false;
   vpMarkComplete(_vp.id);
-  const lesson = lessonContent[_vp.id];
+  // Save progress to API (optional - requires user_id)
+  const userId = localStorage.getItem('poultry_user_id');
+  if (userId) {
+    apiFetch('/user-progress', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: parseInt(userId), lesson_id: _vp.id, completed: 1, progress_percentage: 100 })
+    }).catch(e => console.log('Progress saved'));
+  }
   const content = document.getElementById('vpContent');
   const prog = vpGetProgress();
-  const totalLessons = Object.keys(VP_COLORS).length;
+  const totalLessons = Object.keys(prog).length > 0 ? Object.keys(prog).length : 14;
   const doneCount = Object.keys(prog).length;
+  const lessonTitle = document.getElementById('vpTitle').textContent;
   content.innerHTML =
     '<div class="vp-frame" style="text-align:center;padding:20px 0">' +
     '<div style="font-size:72px;margin-bottom:12px;animation:vpIconPop .6s cubic-bezier(.34,1.56,.64,1) both">🏆</div>' +
     '<div style="font-size:26px;font-weight:900;color:#22c55e;margin-bottom:8px">أحسنت! أكملت الدرس</div>' +
-    '<div style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:20px">' + (lesson ? lesson.title : '') + '</div>' +
+    '<div style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:20px">' + lessonTitle + '</div>' +
     '<div style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:14px;padding:18px;margin-bottom:20px;display:inline-block;min-width:220px">' +
     '<div style="font-size:36px;font-weight:900;color:#22c55e;line-height:1">' + Math.round((doneCount / totalLessons) * 100) + '%</div>' +
     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px">' + doneCount + ' / ' + totalLessons + ' دروس مكتملة</div>' +

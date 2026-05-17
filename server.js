@@ -262,6 +262,65 @@ db.exec(`
     votes INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
+    password_hash TEXT,
+    full_name TEXT,
+    role TEXT DEFAULT 'user',
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS academy_lessons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lesson_id TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    level TEXT DEFAULT 'beginner',
+    icon TEXT,
+    slides_count INTEGER DEFAULT 0,
+    duration_minutes INTEGER DEFAULT 0,
+    category TEXT DEFAULT 'general',
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS academy_slides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lesson_id TEXT NOT NULL,
+    slide_number INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    icon TEXT,
+    slide_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(lesson_id) REFERENCES academy_lessons(lesson_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    lesson_id TEXT,
+    completed INTEGER DEFAULT 0,
+    progress_percentage INTEGER DEFAULT 0,
+    completed_at TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(lesson_id) REFERENCES academy_lessons(lesson_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS academy_qa_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qa_id INTEGER,
+    user_id INTEGER,
+    vote_type TEXT DEFAULT 'up',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(qa_id) REFERENCES academy_qa(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
 `);
 
 // Add multi-type bird count columns safely
@@ -1163,6 +1222,104 @@ app.post('/api/ai/analyze-image', async (req, res) => {
     res.json({ text: response.content?.[0]?.text || 'لم أتمكن من التحليل' });
   } catch (e) {
     res.status(500).json({ error: 'AI service error: ' + e.message });
+  }
+});
+
+// ==================== USERS & AUTHENTICATION ====================
+app.post('/api/users/register', (req, res) => {
+  const { username, email, password, full_name } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  try {
+    const result = db.prepare('INSERT INTO users (username, email, password_hash, full_name) VALUES (?,?,?,?)')
+      .run(username, email||null, password, full_name||'');
+    res.json({ id: result.lastInsertRowid, message: 'User registered' });
+  } catch(e) {
+    res.status(400).json({ error: 'Username or email already exists' });
+  }
+});
+
+app.get('/api/users/:id', (req, res) => {
+  const user = db.prepare('SELECT id, username, email, full_name, role, created_at FROM users WHERE id=?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json(user);
+});
+
+// ==================== ACADEMY LESSONS (DYNAMIC) ====================
+app.get('/api/academy/lessons', (req, res) => {
+  const lessons = db.prepare('SELECT * FROM academy_lessons WHERE active=1 ORDER BY created_at DESC').all();
+  res.json(lessons);
+});
+
+app.get('/api/academy/lessons/:lesson_id', (req, res) => {
+  const lesson = db.prepare('SELECT * FROM academy_lessons WHERE lesson_id=?').get(req.params.lesson_id);
+  if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+  const slides = db.prepare('SELECT * FROM academy_slides WHERE lesson_id=? ORDER BY slide_order').all(req.params.lesson_id);
+  res.json({ ...lesson, slides });
+});
+
+app.post('/api/academy/lessons', (req, res) => {
+  const { lesson_id, title, description, level, icon, slides_count, duration_minutes, category } = req.body;
+  if (!lesson_id || !title) return res.status(400).json({ error: 'lesson_id and title required' });
+  try {
+    const result = db.prepare('INSERT INTO academy_lessons (lesson_id, title, description, level, icon, slides_count, duration_minutes, category) VALUES (?,?,?,?,?,?,?,?)')
+      .run(lesson_id, title, description||'', level||'beginner', icon||'📖', slides_count||0, duration_minutes||0, category||'general');
+    res.json({ id: result.lastInsertRowid });
+  } catch(e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.put('/api/academy/lessons/:lesson_id', (req, res) => {
+  const { title, description, level, icon, slides_count, duration_minutes, category, active } = req.body;
+  db.prepare('UPDATE academy_lessons SET title=?, description=?, level=?, icon=?, slides_count=?, duration_minutes=?, category=?, active=? WHERE lesson_id=?')
+    .run(title, description, level, icon, slides_count, duration_minutes, category, active, req.params.lesson_id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/academy/lessons/:lesson_id', (req, res) => {
+  db.prepare('UPDATE academy_lessons SET active=0 WHERE lesson_id=?').run(req.params.lesson_id);
+  res.json({ ok: true });
+});
+
+// ==================== ACADEMY SLIDES (DYNAMIC) ====================
+app.post('/api/academy/slides', (req, res) => {
+  const { lesson_id, slide_number, title, content, icon, slide_order } = req.body;
+  if (!lesson_id || !title) return res.status(400).json({ error: 'lesson_id and title required' });
+  const result = db.prepare('INSERT INTO academy_slides (lesson_id, slide_number, title, content, icon, slide_order) VALUES (?,?,?,?,?,?)')
+    .run(lesson_id, slide_number||0, title, content||'', icon||'📖', slide_order||0);
+  res.json({ id: result.lastInsertRowid });
+});
+
+app.put('/api/academy/slides/:id', (req, res) => {
+  const { title, content, icon, slide_order } = req.body;
+  db.prepare('UPDATE academy_slides SET title=?, content=?, icon=?, slide_order=? WHERE id=?')
+    .run(title, content, icon, slide_order, req.params.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/academy/slides/:id', (req, res) => {
+  db.prepare('DELETE FROM academy_slides WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// ==================== USER PROGRESS ====================
+app.get('/api/user-progress/:user_id', (req, res) => {
+  const progress = db.prepare('SELECT * FROM user_progress WHERE user_id=? ORDER BY created_at DESC').all(req.params.user_id);
+  res.json(progress);
+});
+
+app.post('/api/user-progress', (req, res) => {
+  const { user_id, lesson_id, completed, progress_percentage } = req.body;
+  if (!user_id || !lesson_id) return res.status(400).json({ error: 'user_id and lesson_id required' });
+  const existing = db.prepare('SELECT id FROM user_progress WHERE user_id=? AND lesson_id=?').get(user_id, lesson_id);
+  if (existing) {
+    db.prepare('UPDATE user_progress SET completed=?, progress_percentage=?, completed_at=? WHERE user_id=? AND lesson_id=?')
+      .run(completed||0, progress_percentage||0, completed?new Date().toISOString():null, user_id, lesson_id);
+    res.json({ id: existing.id, updated: true });
+  } else {
+    const result = db.prepare('INSERT INTO user_progress (user_id, lesson_id, completed, progress_percentage, completed_at) VALUES (?,?,?,?,?)')
+      .run(user_id, lesson_id, completed||0, progress_percentage||0, completed?new Date().toISOString():null);
+    res.json({ id: result.lastInsertRowid });
   }
 });
 
