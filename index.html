@@ -1145,7 +1145,7 @@ canvas.prod-chart{width:100%;height:160px;display:block}
   </div>
 
   <!-- ===== DASHBOARD ===== -->
-  <div class="page" id="page-dashboard">
+  <div class="page page-hidden" id="page-dashboard">
     <div id="dashAlerts"></div>
     <div class="stats-grid" id="dashStats"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     <div class="two-col">
@@ -7452,12 +7452,29 @@ function toggleLang() {
 
 // ==================== START ====================
 async function startApp() {
+  // 1. Determine which page to show first
+  const savedPage = localStorage.getItem('poultry_active_page') || 'dashboard';
+  
+  // 2. Immediately show the saved page (UI first)
+  nav(savedPage);
+  
+  // 3. Then perform background initialization
   await checkAPI();
   calcSlaughter();
+}
+
+// Ensure the app starts after the DOM is fully loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
+
+// Handle browser back/forward buttons and direct URL access if needed
+window.addEventListener('popstate', () => {
   const savedPage = localStorage.getItem('poultry_active_page') || 'dashboard';
   nav(savedPage);
-}
-startApp();
+});
 setInterval(() => {
   if (!document.getElementById('page-dashboard').classList.contains('page-hidden')) loadDashboard();
 }, 60000);
