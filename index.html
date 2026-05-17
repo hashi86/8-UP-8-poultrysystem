@@ -4693,7 +4693,8 @@ window.sendAcademyAIMsg = async () => {
     const result = await aiChat([{role:'user',content:q}],
       'أنت مستشار متخصص في صحة وإنتاج الدواجن، تتحدث العربية بطلاقة. أجب بشكل مفصّل ومنظّم مع نقاط واضحة. قدّم معلومات دقيقة وعملية مناسبة للمربين التجاريين وأصحاب المزارع الصغيرة.');
     const typing = document.getElementById('acad-ai-typing');
-    if (typing) typing.outerHTML = `<div style="align-self:flex-start;background:var(--bg);border-radius:12px 12px 12px 4px;padding:10px 14px;max-width:85%;font-size:13px;line-height:1.8;color:var(--text)">${(result||'عذراً، حدث خطأ في الاتصال.').replace(/\n/g,'<br>')}</div>`;
+    const responseText = result?.text || result || 'عذراً، حدث خطأ في الاتصال.';
+    if (typing) typing.outerHTML = `<div style="align-self:flex-start;background:var(--bg);border-radius:12px 12px 12px 4px;padding:10px 14px;max-width:85%;font-size:13px;line-height:1.8;color:var(--text)">${responseText.replace(/\n/g,'<br>')}</div>`;
   } catch(e) {
     const typing = document.getElementById('acad-ai-typing');
     if (typing) typing.outerHTML = `<div style="align-self:flex-start;background:#fef2f2;border-radius:12px;padding:10px;font-size:12px;color:#dc2626">خطأ في الاتصال بالذكاء الاصطناعي</div>`;
