@@ -7451,8 +7451,13 @@ function toggleLang() {
 }
 
 // ==================== START ====================
-checkAPI();
-calcSlaughter();
+async function startApp() {
+  await checkAPI();
+  calcSlaughter();
+  const savedPage = localStorage.getItem('poultry_active_page') || 'dashboard';
+  nav(savedPage);
+}
+startApp();
 setInterval(() => {
   if (!document.getElementById('page-dashboard').classList.contains('page-hidden')) loadDashboard();
 }, 60000);
@@ -7551,8 +7556,7 @@ function updateBottomNav(page) {
 }
 
 // Init bottom nav state
-const savedPage = localStorage.getItem('poultry_active_page') || 'dashboard';
-nav(savedPage);
+// Removed from here to be called after initial app setup
 </script>
 
 <!-- BOTTOM NAV BAR -->
